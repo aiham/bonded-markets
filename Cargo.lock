@@ -292,6 +292,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
+name = "bonded-markets"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "borsh"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -729,14 +737,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe3179b85e1fd8b14447cbebadb75e45a1002f541b925f0bfec366d56a81c56d"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "moonbase-markets"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
 ]
 
 [[package]]

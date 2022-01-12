@@ -4,14 +4,14 @@ use utils::anchor_transfer;
 
 pub mod utils;
 
-declare_id!("2gJLxMZ92AmEvC4PZEKgYj4EkyBojSVkdmLyDvKKVWym");
+declare_id!("4NmFzm4vSA3ey45hpcQTdF16583rMaLuCrQ1LvWRKAH7");
 
 const MARKET_AUTHORITY_SEED: &[u8] = b"market_auth";
 const TREASURY_SEED: &[u8] = b"treasury";
 const MARKET_SEED: &[u8] = b"market";
 
 #[program]
-pub mod moonbase_markets {
+pub mod bonded_markets {
     use super::*;
     pub fn new_market(
         ctx: Context<NewMarket>,

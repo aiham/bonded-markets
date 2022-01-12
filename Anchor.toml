@@ -1,5 +1,5 @@
 [programs.localnet]
-moonbase_markets = "2gJLxMZ92AmEvC4PZEKgYj4EkyBojSVkdmLyDvKKVWym"
+bonded_markets = "4NmFzm4vSA3ey45hpcQTdF16583rMaLuCrQ1LvWRKAH7"
 
 [registry]
 url = "https://anchor.projectserum.com"

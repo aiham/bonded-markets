@@ -11,14 +11,14 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { findAssociatedTokenAccount } from "./helpers/tokenHelpers";
-import { MoonbaseMarkets } from "../target/types/moonbase_markets";
+import { BondedMarkets } from "../target/types/bonded_markets";
 
-describe("moonbase-markets", () => {
+describe("bonded-markets", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.MoonbaseMarkets as Program<MoonbaseMarkets>;
+  const program = anchor.workspace.BondedMarkets as Program<BondedMarkets>;
 
   interface Pda {
     address: PublicKey;
