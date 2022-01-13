@@ -3,14 +3,17 @@ import { BN, Program } from "@project-serum/anchor";
 import * as web3 from "@solana/web3.js";
 import * as assert from "assert";
 
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
 import {
   Token,
   TOKEN_PROGRAM_ID,
   MintLayout,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { findAssociatedTokenAccount } from "./helpers/tokenHelpers";
+import {
+  createAssociatedTokenAccountInstruction,
+  findAssociatedTokenAccount,
+} from "./helpers/tokenHelpers";
 import { BondedMarkets } from "../target/types/bonded_markets";
 
 describe("bonded-markets", () => {
@@ -25,46 +28,140 @@ describe("bonded-markets", () => {
     bump: number;
   }
 
-  let targetMint = anchor.web3.Keypair.generate();
-  let marketAuthority: Pda;
-  let marketTreasury: Pda;
+  let payer = web3.Keypair.generate();
+
+  let moonbaseMint = web3.Keypair.generate();
+  let moonbaseMintAuthority = web3.Keypair.generate();
+  let MoonbaseToken = null;
+  let targetMint = web3.Keypair.generate();
+  let TargetToken = null;
+
   let market: Pda;
-  let buyerTokenAccount: Pda;
-  let newToken = null;
+  let marketAttribution: Pda;
+  let marketAuthority: Pda;
+  let baseTreasury: Pda;
+  let marketName = "genesis";
+
+  let buyer = web3.Keypair.generate();
+  let buyerBaseTokenAccount: Pda;
+  let buyerTargetTokenAccount: Pda;
+
+  let seller = web3.Keypair.generate();
+  let sellerBaseTokenAccount: Pda;
+  let sellerTargetTokenAccount: Pda;
 
   it("config", async () => {
     marketAuthority = await findMarketAuthority(targetMint.publicKey);
-    marketTreasury = await findMarketTreasury(targetMint.publicKey);
+    baseTreasury = await findMarketBaseTreasury(moonbaseMint.publicKey);
     market = await findMarket(targetMint.publicKey);
-    buyerTokenAccount = await findAssociatedTokenAccount(
-      provider.wallet.publicKey,
+    marketAttribution = await findMarketAttribution(marketName);
+
+    buyerBaseTokenAccount = await findAssociatedTokenAccount(
+      buyer.publicKey,
+      moonbaseMint.publicKey
+    );
+    buyerTargetTokenAccount = await findAssociatedTokenAccount(
+      buyer.publicKey,
       targetMint.publicKey
     );
-    marketTreasury = await findMarketTreasury(targetMint.publicKey);
 
-    newToken = new Token(
+    sellerBaseTokenAccount = await findAssociatedTokenAccount(
+      seller.publicKey,
+      moonbaseMint.publicKey
+    );
+    sellerTargetTokenAccount = await findAssociatedTokenAccount(
+      seller.publicKey,
+      targetMint.publicKey
+    );
+    TargetToken = new Token(
       provider.connection,
       targetMint.publicKey,
       TOKEN_PROGRAM_ID,
-      web3.Keypair.generate()
+      payer
     );
+    MoonbaseToken = new Token(
+      provider.connection,
+      moonbaseMint.publicKey,
+      TOKEN_PROGRAM_ID,
+      payer
+    );
+  });
+
+  it("create moonbase token", async () => {
+    //create subscription mint account
+    await performAirdrops();
+    let transaction = new web3.Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: moonbaseMint.publicKey,
+        space: MintLayout.span,
+        lamports: await provider.connection.getMinimumBalanceForRentExemption(
+          MintLayout.span
+        ),
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      Token.createInitMintInstruction(
+        TOKEN_PROGRAM_ID,
+        moonbaseMint.publicKey,
+        4,
+        moonbaseMintAuthority.publicKey,
+        null
+      ),
+      createAssociatedTokenAccountInstruction(
+        moonbaseMint.publicKey,
+        buyerBaseTokenAccount.address,
+        buyer.publicKey,
+        payer.publicKey
+      ),
+      createAssociatedTokenAccountInstruction(
+        moonbaseMint.publicKey,
+        sellerBaseTokenAccount.address,
+        seller.publicKey,
+        payer.publicKey
+      )
+    );
+    await web3.sendAndConfirmTransaction(provider.connection, transaction, [
+      payer,
+      moonbaseMint,
+    ]);
+
+    await MoonbaseToken.mintTo(
+      buyerBaseTokenAccount.address,
+      moonbaseMintAuthority,
+      [],
+      100000000000000 //10 billy
+    );
+    //if i want the balances to match i need to match the mint decimals with the token created
+
+    // let acctInfo = await MoonbaseToken.getAccountInfo(
+    //   buyerBaseTokenAccount.address
+    // );
+    // console.log(acctInfo);
+    let fetched = await provider.connection.getTokenAccountBalance(
+      buyerBaseTokenAccount.address
+    );
+    console.log(fetched);
   });
 
   it("make a new market", async () => {
     // Add your test here.
     const tx = await program.rpc.newMarket(
       market.bump,
+      marketAttribution.bump,
+      baseTreasury.bump,
       marketAuthority.bump,
-      marketTreasury.bump,
-      "firstmarket",
+      marketName,
+      0,
       {
         accounts: {
           payer: provider.wallet.publicKey,
           creator: provider.wallet.publicKey,
           market: market.address,
+          attribution: marketAttribution.address,
+          baseMint: moonbaseMint.publicKey,
           targetMint: targetMint.publicKey,
-          marketAuthority: marketAuthority.address,
-          marketTreasury: marketTreasury.address,
+          baseTreasury: baseTreasury.address,
+          authority: marketAuthority.address,
           rent: web3.SYSVAR_RENT_PUBKEY,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: web3.SystemProgram.programId,
@@ -72,38 +169,103 @@ describe("bonded-markets", () => {
         signers: [targetMint],
       }
     );
-    console.log("Your transaction signature", tx);
+    await printMarket(market.address);
   });
 
   it("buy tokens from the new market", async () => {
-    let amount = new BN(77000);
-    const tx = await program.rpc.buyTokens(amount, {
+    let startingBaseBalance = await provider.connection.getTokenAccountBalance(
+      buyerBaseTokenAccount.address
+    );
+
+    let amount = new BN(980220);
+    const tx = await program.rpc.buy(amount, {
       accounts: {
-        buyer: provider.wallet.publicKey,
-        buyerTokenAccount: buyerTokenAccount.address,
+        buyer: buyer.publicKey,
+        buyerBaseTokenAccount: buyerBaseTokenAccount.address,
+        buyerTargetTokenAccount: buyerTargetTokenAccount.address,
         market: market.address,
-        marketTargetMint: targetMint.publicKey,
         marketAuthority: marketAuthority.address,
-        marketTreasury: marketTreasury.address,
+        marketTargetMint: targetMint.publicKey,
+        marketBaseTreasury: baseTreasury.address,
         rent: web3.SYSVAR_RENT_PUBKEY,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: web3.SystemProgram.programId,
       },
+      signers: [buyer],
     });
 
-    let buyerTokenAccountInfo = await newToken.getAccountInfo(
-      buyerTokenAccount.address
+    let endingBaseBalance = await provider.connection.getTokenAccountBalance(
+      buyerBaseTokenAccount.address
     );
-    console.log(buyerTokenAccountInfo);
+    console.log(endingBaseBalance);
+    let difference =
+      startingBaseBalance.value.uiAmount - endingBaseBalance.value.uiAmount;
+    let pricePerToken = difference / (amount.toNumber() / 10000);
+    console.log(
+      "we just paid",
+      difference,
+      "moonbase for",
+      amount.toNumber() / 10000,
+      "of the target mint",
+      "for a price per token of",
+      pricePerToken,
+      "moonbase"
+    );
+    // let buyerTargetAmount = await provider.connection.getTokenAccountBalance(
+    //   buyerTargetTokenAccount.address
+    // );
+    let buyerTokenAccountInfo = await TargetToken.getAccountInfo(
+      buyerTargetTokenAccount.address
+    );
     assert.ok(buyerTokenAccountInfo.amount.eq(amount));
-
-    let marketTreasuryInfo = await provider.connection.getAccountInfo(
-      marketTreasury.address
-    );
-    console.log(marketTreasuryInfo);
-    //balance slightly lower than we took from the buyer bc it's paying for rent on first transfer
   });
+
+  const performAirdrops = async () => {
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        payer.publicKey,
+        5 * web3.LAMPORTS_PER_SOL
+      ),
+      "confirmed"
+    );
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        buyer.publicKey,
+        5 * web3.LAMPORTS_PER_SOL
+      ),
+      "confirmed"
+    );
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        seller.publicKey,
+        5 * web3.LAMPORTS_PER_SOL
+      ),
+      "confirmed"
+    );
+  };
+  const printMarket = async (address: PublicKey) => {
+    let market = await program.account.market.fetch(address);
+    let readableMarket = {
+      creator: market.creator.toBase58(),
+      baseMint: market.baseMint.toBase58(),
+      targetMint: market.targetMint.toBase58(),
+      baseTreasuryAddress: market.baseTreasury.address.toBase58(),
+      authorityAddress: market.authority.address.toBase58(),
+      curve: market.curve,
+      bump: market.bump,
+    };
+    console.log(readableMarket);
+  };
+  interface Market {
+    creator: PublicKey;
+    baseMint: PublicKey;
+    targetMint: PublicKey;
+    baseTreasury: Pda;
+    authority: Pda;
+    curve: number;
+    bump: number;
+  }
 
   const findMarket = async (targetMint: PublicKey) => {
     return PublicKey.findProgramAddress(
@@ -116,7 +278,22 @@ describe("bonded-markets", () => {
       };
     });
   };
-  const findMarketTreasury = async (targetMint: PublicKey) => {
+  const findMarketAttribution = async (name: string) => {
+    return PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode("attribution"),
+        anchor.utils.bytes.utf8.encode(name),
+      ],
+      program.programId
+    ).then(([address, bump]) => {
+      return {
+        address: address,
+        bump: bump,
+      };
+    });
+  };
+
+  const findMarketBaseTreasury = async (targetMint: PublicKey) => {
     return PublicKey.findProgramAddress(
       [anchor.utils.bytes.utf8.encode("treasury"), targetMint.toBuffer()],
       program.programId
