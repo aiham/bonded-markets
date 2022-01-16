@@ -124,10 +124,10 @@ describe("bonded-markets", () => {
       yeezyMarket.targetMint
     );
     await burn(sponsor, yeezyMarket, new BN(1.333 * TARGET_DECIMAL_MODIFIER));
+
     await printMarket(yeezyMarket.address);
 
     await fetchWholePrice(yeezyMarket);
-    await fetchMarginalPrice(yeezyMarket);
 
     await sellWithNarration(
       yeezyUser,
