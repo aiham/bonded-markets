@@ -47,8 +47,13 @@ pub fn handler(ctx: Context<Sell>, amount: u64) -> ProgramResult {
     let total_sale_price_in_base_tokens: u64 = total_sale_price_in_base_tokens(
         ctx.accounts.market.curve,
         ctx.accounts.market_target_mint.supply,
+        ctx.accounts.market.amount_burned,
         amount,
     );
+    //so a sponsored burn would be
+    //put tokens into burn address
+    //that way the mint supply still stays up
+    //so u would just use it to buy the token from the curve and transfer it into a burn address
     token::transfer(
         ctx.accounts
             .into_transfer_base_tokens_to_seller_context()
@@ -58,11 +63,19 @@ pub fn handler(ctx: Context<Sell>, amount: u64) -> ProgramResult {
     Ok(())
 }
 
-pub fn total_sale_price_in_base_tokens(curve: Curve, mint_supply: u64, sale_amount: u64) -> u64 {
-    let future_supply = mint_supply.checked_sub(sale_amount).unwrap();
+//so you're going to burn the tokens and then when u burn them you're just going to push the curve like this
+//same thing will happen with the sell
+pub fn total_sale_price_in_base_tokens(
+    curve: Curve,
+    mint_supply: u64,
+    amount_burned: u64,
+    sale_amount: u64,
+) -> u64 {
+    let curve_supply = mint_supply.checked_add(amount_burned).unwrap();
+    let future_supply = curve_supply.checked_sub(sale_amount).unwrap();
     match curve {
-        Curve::Linear => curve_math::linear::area_under_curve(future_supply, mint_supply),
-        Curve::Quadratic => curve_math::quadratic::area_under_curve(future_supply, mint_supply),
+        Curve::Linear => curve_math::linear::area_under_curve(future_supply, curve_supply),
+        Curve::Quadratic => curve_math::quadratic::area_under_curve(future_supply, curve_supply),
     }
 }
 

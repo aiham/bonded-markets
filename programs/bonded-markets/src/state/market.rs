@@ -7,12 +7,13 @@ pub struct Market {
     pub creator: Pubkey, //wallet of creator
     pub base_mint: Pubkey,
     pub target_mint: Pubkey,
+    pub amount_burned: u64,
     pub base_treasury: Pda, //derivable as pda
     pub authority: Pda,     //derivable as pda -- can mint new tokens and transer out of treasury
     pub curve: Curve,
     pub bump: u8, //this is assuming base is sol
 }
-//size (173) + 3 + string bytes (20 char)
+//size (181) + 3 + string bytes (20 char)
 
 #[derive(Copy, Clone, Default, AnchorSerialize, AnchorDeserialize)]
 pub struct Pda {

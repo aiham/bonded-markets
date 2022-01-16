@@ -47,6 +47,7 @@ pub fn handler(ctx: Context<Buy>, amount: u64) -> ProgramResult {
     let total_purchase_price_in_base_tokens: u64 = total_purchase_price_in_base_tokens(
         ctx.accounts.market.curve,
         ctx.accounts.market_target_mint.supply,
+        ctx.accounts.market.amount_burned,
         amount,
     );
     token::transfer(
@@ -93,11 +94,13 @@ impl<'info> Buy<'info> {
 pub fn total_purchase_price_in_base_tokens(
     curve: Curve,
     mint_supply: u64,
+    amount_burned: u64,
     purchase_amount: u64,
 ) -> u64 {
-    let future_supply = mint_supply.checked_add(purchase_amount).unwrap();
+    let curve_supply = mint_supply.checked_add(amount_burned).unwrap();
+    let future_supply = curve_supply.checked_add(purchase_amount).unwrap();
     match curve {
-        Curve::Linear => curve_math::linear::area_under_curve(mint_supply, future_supply),
-        Curve::Quadratic => curve_math::quadratic::area_under_curve(mint_supply, future_supply),
+        Curve::Linear => curve_math::linear::area_under_curve(curve_supply, future_supply),
+        Curve::Quadratic => curve_math::quadratic::area_under_curve(curve_supply, future_supply),
     }
 }

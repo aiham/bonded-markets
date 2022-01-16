@@ -8,6 +8,14 @@ import * as anchor from "@project-serum/anchor";
 const provider = anchor.Provider.env();
 const program = anchor.workspace.BondedMarkets as Program<BondedMarkets>;
 
+export const BASE_DECIMALS = 6;
+export const BASE_DECIMAL_MODIFIER = 10 ** BASE_DECIMALS;
+export const TARGET_DECIMALS = 6;
+export const TARGET_DECIMAL_MODIFIER = 10 ** TARGET_DECIMALS;
+export const LINEAR_DIV_CONSTANT = 100000000;
+
+export const DEFAULT_BASE_MINT = web3.Keypair.generate();
+
 export interface User {
   wallet: Keypair;
   baseTokenAccount: Pda;
@@ -18,9 +26,11 @@ export interface Pda {
   bump: number;
 }
 export interface Market {
+  name: string;
   creator: PublicKey;
   baseMint: PublicKey;
   targetMint: PublicKey;
+  amountBurned: BN;
   baseTreasury: Pda;
   authority: Pda;
   curve: number;

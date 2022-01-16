@@ -10,7 +10,7 @@ pub struct NewMarket<'info> {
         seeds = [MARKET_SEED, target_mint.key().as_ref()],
         bump = market_bump,
         payer = payer,
-        space = 196,
+        space = 204,
     )]
     market: Account<'info, Market>,
     #[account(
