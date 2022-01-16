@@ -27,10 +27,10 @@ import {
 } from "./helpers/config";
 import { linearCurve, linearDefiniteIntegral } from "./helpers/curveMath";
 import {
-  newMarket,
   buyWithNarration,
   sellWithNarration,
   burn,
+  createMarket,
 } from "./helpers/instructions";
 import { fetchMarginalPrice, fetchWholePrice } from "./helpers/fetch";
 
@@ -88,7 +88,7 @@ describe("bonded-markets", () => {
   if (firstMarket) {
     it("make a new market", async () => {
       // Add your test here.
-      genesisMarket = await newMarket("genesis");
+      genesisMarket = await createMarket("genesis");
 
       firstUser = await createUser(
         web3.Keypair.generate(),
@@ -107,7 +107,7 @@ describe("bonded-markets", () => {
   }
 
   it("do a whole market with burning", async () => {
-    let yeezyMarket = await newMarket("yeezy");
+    let yeezyMarket = await createMarket("yeezy");
     let yeezyUser = await createUser(
       web3.Keypair.generate(),
       yeezyMarket.targetMint

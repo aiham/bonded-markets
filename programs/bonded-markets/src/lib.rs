@@ -10,8 +10,8 @@ declare_id!("4NmFzm4vSA3ey45hpcQTdF16583rMaLuCrQ1LvWRKAH7");
 #[program]
 pub mod bonded_markets {
     use super::*;
-    pub fn new_market(
-        ctx: Context<NewMarket>,
+    pub fn create_market(
+        ctx: Context<CreateMarket>,
         market_bump: u8,
         attribution_bump: u8,
         target_treasury_bump: u8,
@@ -19,7 +19,7 @@ pub mod bonded_markets {
         name: String,
         curve: u8,
     ) -> ProgramResult {
-        new_market::handler(
+        create_market::handler(
             ctx,
             market_bump,
             attribution_bump,

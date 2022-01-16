@@ -24,9 +24,9 @@ import { linearDefiniteIntegral } from "./curveMath";
 const provider = anchor.Provider.env();
 const program = anchor.workspace.BondedMarkets as Program<BondedMarkets>;
 
-export const newMarket = async (name: string): Promise<Market> => {
+export const createMarket = async (name: string): Promise<Market> => {
   let newMarketConfig = await getNewMarketConfig(name);
-  const tx = await program.rpc.newMarket(
+  const tx = await program.rpc.createMarket(
     newMarketConfig.market.bump,
     newMarketConfig.attribution.bump,
     newMarketConfig.baseTreasury.bump,

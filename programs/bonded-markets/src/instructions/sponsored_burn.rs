@@ -1,5 +1,13 @@
 use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::token};
 
+/*
+why this imp?
+
+- easy to see exactly how much burned directly from the burn pool, rather than from other sources
+- keeps the supply on the mint in line with the actual supply eligible to be circulated
+
+*/
+
 #[derive(Accounts)]
 pub struct SponsoredBurn<'info> {
     sponsor: Signer<'info>,

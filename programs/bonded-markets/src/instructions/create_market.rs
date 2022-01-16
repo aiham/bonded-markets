@@ -2,7 +2,7 @@ use {crate::state::*, crate::utils::*, anchor_lang::prelude::*, anchor_spl::toke
 
 #[derive(Accounts)]
 #[instruction(market_bump: u8, attribution_bump: u8, base_treasury_bump: u8, market_authority_bump: u8, name: String)]
-pub struct NewMarket<'info> {
+pub struct CreateMarket<'info> {
     payer: Signer<'info>,
     creator: Signer<'info>,
     #[account(
@@ -49,7 +49,7 @@ pub struct NewMarket<'info> {
 }
 
 pub fn handler(
-    ctx: Context<NewMarket>,
+    ctx: Context<CreateMarket>,
     market_bump: u8,
     _attribution_bump: u8,
     base_treasury_bump: u8,
